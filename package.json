@@ -1,0 +1,28 @@
+{
+  "name": "vault",
+  "version": "1.0.0",
+  "description": "VAULT is a content-addressed, cryptographically chained version store with a custom CP-based transport protocol. It is **not a Git clone**. It is built for solo developers and small teams (2–5 people) who want full data ownership, no cloud dependency, and a simpler mental model than Git.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tui": "node tui.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furinaops/VAULT.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/furinaops/VAULT/issues"
+  },
+  "homepage": "https://github.com/furinaops/VAULT#readme",
+  "dependencies": {
+    "blessed": "^0.1.81"
+  }
+}
