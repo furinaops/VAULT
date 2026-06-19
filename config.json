@@ -1,0 +1,8 @@
+{
+  "port": 9000,
+  "storage_path": "~/.vault/repos/",
+  "owner_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "guest_key": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+  "max_repo_size_mb": 2048,
+  "log_path": "~/.vault/receiver.log"
+}

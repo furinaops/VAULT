@@ -1,0 +1,27 @@
+server:
+  host: "0.0.0.0"
+  port: 9000
+
+session:
+  version: 1
+  echo_expiry_ms: 10000
+  echo_warn_ms: 7000
+  heartbeat_interval_ms: 500
+  liveness_timeout_ms: 30000
+
+agents:
+  - id: 0x01
+    name: "robot_arm"
+    role: initiator
+    triggers: []
+
+  - id: 0x02
+    name: "conveyor"
+    role: responder
+    triggers:
+      - MOVE
+      - STOP
+      - SPEED
+      - STATUS
+      - EXECUTE
+      - RESET
