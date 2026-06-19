@@ -945,3 +945,5 @@ Created automatically on first run with a `"default"` author if not present.
 ## License
 
 MIT. Use it, modify it, share it. No warranty, no guarantee, no cloud.
+
+*VAULT is built on top of the [CP (Conversational Protocol)](https://github.com/furinaops/CP) project.*
