@@ -1,0 +1,375 @@
+╔══════════════════════════════════════════════════════════════╗
+║                     VAULT  CHEAT  SHEET                      ║
+║        Personal Cryptographic Version Control System         ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1. BUILD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  From project root:
+    mkdir build && cd build
+    cmake ..
+    make -j$(nproc)
+
+  Binaries produced:
+    build/vault              CLI client (sender)
+    build/vault-receiver     Receiver daemon
+    build/vault-relay        Relay server
+
+  TUI (Node.js):
+    npm install             Install blessed dependency
+    node tui.js             Launch interactive version browser
+    npm run tui             Same, via npm script
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 2. /HOOK  —  Push a version (save a snapshot)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /HOOK "<path>" --n "<name>" [--msg "<description>"]
+
+  Aliases:  /HOOK | hook | HOOK
+
+  Arguments:
+    <path>          File or directory to snapshot (required)
+    --n <name>      Human-readable version name  (required)
+    --msg <desc>    Description / commit message  (optional)
+
+  Example:
+    ./build/vault /HOOK ~/my-project --n initial --msg "first push"
+    ./build/vault /HOOK /tmp/test.txt --n fix-typo --msg "fixed the typo"
+
+  Notes:
+    - Reads current HEAD from ~/.vault/HEAD
+    - Scans directory recursively, computes delta vs previous tree
+    - Respects .vaultignore (gitignore-style patterns)
+    - Stores blobs/trees in ~/.vault/data/objects/XX/...
+    - Saves version metadata in ~/.vault/data/versions/<sic>.json
+    - Updates ~/.vault/HEAD and ~/.vault/data/names.json
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 3. /GET  —  Fetch / restore a version
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /GET "<target>" [--delta] [--log]
+
+  Aliases:  /GET | get | GET
+
+  Arguments:
+    <target>    Name, short SIC (6+ hex), full SIC, or "latest"  (required)
+    --delta     Only restore changed files (NYI in local mode)
+    --log       Print version chain table after fetching
+
+  Examples:
+    ./build/vault /GET latest
+    ./build/vault /GET first-push
+    ./build/vault /GET a1b2c3
+    ./build/vault /GET a1b2c3d4... --log
+
+  Notes:
+    - Resolves names via ~/.vault/data/names.json
+    - Writes files to current working directory
+    - Updates ~/.vault/HEAD to point to fetched version
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 4. /SIC  —  Query version information
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /SIC "<target>"
+    ./build/vault /SIC --log [--n <count>]
+
+  Aliases:  /SIC | sic | SIC
+
+  Arguments:
+    <target>    Name, short SIC, full SIC, or "latest" (default: latest)
+    --log       List all versions in a formatted table
+    --n <count>  With --log: show only last N versions
+
+  Examples:
+    ./build/vault /SIC first-push        # show version details
+    ./build/vault /SIC --log             # full version chain table
+    ./build/vault /SIC --log --n 5       # last 5 versions
+
+  Output (single):
+    SIC:    8b524ba4dafda564a7109218ce59c745...
+    Short:  8b524b
+    Name:   first-push
+    Parent: 3a6b4f75a400be9d88f3d21a1c0b598...
+    Author: default
+    Time:   2026-06-19 13:28:37
+    Message: pushing a test file
+
+  Output (--log):
+    ┌──────────────────────────────────────────────────┐
+    │  VAULT version chain                             │
+    ├──────────┬─────────┬──────────┬──────────────────┤
+    │ Name     │ SIC     │ Timestamp│ Author           │
+    ├──────────┼─────────┼──────────┼──────────────────┤
+    │ first-push│ 8b524b │ 13:28    │ default       HEAD│
+    └──────────┴─────────┴──────────┴──────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 5. /DIFF  —  Compare two versions
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /DIFF "<a>" "<b>"
+
+  Aliases:  /DIFF | diff | DIFF
+
+  Arguments:
+    <a>    First version (name, short SIC, or full SIC)
+    <b>    Second version (name, short SIC, or full SIC)
+
+  Examples:
+    ./build/vault /DIFF initial fix1
+    ./build/vault /DIFF a1b2c3 d4e5f6
+
+  Output:
+    Comparing initial (a1b2c3) → fix1 (d4e5f6)
+    src/main.c
+      - line 1: printf("hello, world\n");
+      + line 1: printf("hello, %s\n", argc > 1 ? argv[1] : "world");
+    README.md [added]
+      + line 1: # Documentation
+
+  Notes:
+    - Shows added files with [+], deleted files with [deleted]
+    - Modified files show line-by-line diff (- old, + new)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 6. /SYNC  —  Pull latest changes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /SYNC
+
+  Aliases:  /SYNC | sync | SYNC
+
+  Arguments:  none
+
+  Example:
+    ./build/vault /SYNC
+
+  Output (up to date):
+    Already up to date.
+
+  Output (new versions):
+    ✓ 2 new version(s) since your last sync
+    a1b2c3  fix1  14:32:01  default
+    d4e5f6  fix2  14:33:01  default  ◄ HEAD
+    Local files updated.
+
+  Output (conflicts):
+    ⚠ Conflict detected in src/main.c
+      Your local changes overlap with fix1 (a1b2c3)
+      Resolve manually then run /HOOK to push your version.
+    ⚠ Sync completed with conflicts.
+
+  Notes:
+    - SHA256-compares local files against tree blobs
+    - Conflicting files are NEVER overwritten (must resolve manually)
+    - Updates ~/.vault/HEAD and names.json on clean sync
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 7. /ROLLBACK  —  Move HEAD to an older version
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /ROLLBACK "<target>"
+
+  Aliases:  /ROLLBACK | rollback | ROLLBACK
+
+  Arguments:
+    <target>    Version to set as HEAD (name, short SIC, or full SIC)
+
+  Example:
+    ./build/vault /ROLLBACK initial
+
+  Output:
+    ⚠ Rolling back to initial (a1b2c3)...
+    ✓ HEAD is now initial (a1b2c3)
+    Newer versions still exist. Use /SIC --log to see full chain.
+
+  Notes:
+    - Does NOT delete newer versions
+    - Only moves the HEAD pointer
+    - Version chain is append-only; all data is preserved
+    - Use /HOOK to create a new child from the old HEAD
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 8. /VERIFY  —  Verify cryptographic chain integrity
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault /VERIFY [<sic>]
+
+  Aliases:  /VERIFY | verify | VERIFY
+
+  Arguments:
+    <sic>    Optional: verify only up to this version
+
+  Examples:
+    ./build/vault /VERIFY
+    ./build/vault /VERIFY a1b2c3
+
+  Output (chain intact):
+    a1b2c3  initial  ✓
+    d4e5f6  fix1     ✓
+    Chain intact. 2 version(s) verified.
+
+  Output (tampered):
+    a1b2c3  initial  ✓
+    d4e5f6  fix1     ✗  SIC mismatch — history may have been altered
+    Chain integrity check failed — history may have been tampered.
+
+  Notes:
+    - Recomputes each SIC from its fields and compares to stored SIC
+    - Each SIC = SHA256(parent_sic + tree_hash + author_id + timestamp + name)
+    - Tampering any version invalidates all descendants
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 9. RECEIVER DAEMON  (vault-receiver)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault-receiver [--config <path>]
+
+  Flags:
+    --config <path>    Path to config JSON (default: ~/.vault/receiver.json)
+
+  Example:
+    ./build/vault-receiver --config ~/.vault/receiver.json
+
+  Config file (~/.vault/receiver.json):
+  {
+    "port": 9000,
+    "storage_path": "~/.vault/repos/",
+    "owner_key": "<64-char-hex>",
+    "guest_key": "<64-char-hex>",
+    "max_repo_size_mb": 2048,
+    "log_path": "~/.vault/receiver.log",
+    "cp_host": "127.0.0.1",
+    "cp_port": 9001,
+    "session_token": ""
+  }
+
+  Config defaults (if file missing):
+    port:              9000
+    storage_path:      ~/.vault/repos/
+    owner_key:         (empty)
+    guest_key:         (empty)
+    max_repo_size_mb:  2048
+    log_path:          ~/.vault/receiver.log
+    cp_host:           127.0.0.1
+    cp_port:           9001
+    session_token:     (empty)
+
+  What it does:
+    - Connects to a CP relay/server and listens for commands
+    - Handles: HOOK_INIT, GET_REQ, SIC_QUERY, SYNC_REQ,
+      VERIFY_REQ, ROLLBACK_REQ
+    - Stores all data in <storage_path>/data/
+    - Graceful shutdown on SIGINT / SIGTERM
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 10. RELAY SERVER  (vault-relay)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    ./build/vault-relay [--config <path>]
+
+  Flags:
+    --config <path>    Path to config JSON (default: ~/.vault/relay.json)
+
+  Example:
+    ./build/vault-relay --config ~/.vault/relay.json
+
+  Config file (~/.vault/relay.json):
+  {
+    "port": 9001,
+    "host": "0.0.0.0",
+    "session_timeout_seconds": 3600,
+    "max_concurrent_sessions": 50,
+    "log_path": "~/.vault/relay.log"
+  }
+
+  Config defaults (if file missing):
+    port:                    9001
+    host:                    0.0.0.0
+    session_timeout_seconds: 3600
+    max_concurrent_sessions: 50
+    log_path:                ~/.vault/relay.log
+
+  What it does:
+    - Stateless byte-pipe relay for CP protocol
+    - Pairs sender + receiver by session token
+    - Cannot read message content (CP-encrypted)
+    - No storage, no business logic
+    - Graceful shutdown on SIGINT / SIGTERM
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 11. TUI  —  Interactive Terminal Browser
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Usage:
+    node tui.js
+    npm run tui
+
+  Controls:
+    ↑ / ↓          Navigate version list
+    Enter          Select version, show details
+    Tab            Switch focus between panels
+    r              Refresh data from disk
+    q / Ctrl+C     Quit
+
+  What it shows:
+    - Left panel: chronological list of all versions (HEAD marked)
+    - Right panel: version metadata (SIC, parent, author, time)
+    - File tree: directory structure of selected version's snapshot
+    - Bottom bar: stats and key bindings
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 12. DATA STORAGE LAYOUT  (~/.vault/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ~/.vault/
+    ├── HEAD                          Current HEAD SIC (plain text)
+    ├── author.json                   Author identity (JSON)
+    └── data/
+        ├── names.json                Name → SIC mappings (JSON)
+        ├── objects/
+        │   └── <xx>/<remainder>      Content-addressed blobs & trees
+        └── versions/
+            └── <full-sic>.json       Version metadata (key=value format)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 13. QUICK REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Command              | Alias Forms           | Action
+  ─────────────────────┼───────────────────────┼──────────────────────────
+  /HOOK <path> --n <n> | hook, HOOK           | Push a version snapshot
+  /GET <target>        | get, GET              | Restore a version
+  /SIC <target>        | sic, SIC              | Show version details
+  /SIC --log           | sic, SIC              | List version chain
+  /DIFF <a> <b>        | diff, DIFF            | Compare two versions
+  /SYNC                | sync, SYNC            | Pull latest changes
+  /ROLLBACK <target>   | rollback, ROLLBACK    | Move HEAD to old version
+  /VERIFY [<sic>]      | verify, VERIFY        | Check chain integrity
